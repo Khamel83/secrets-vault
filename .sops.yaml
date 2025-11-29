@@ -1,0 +1,3 @@
+creation_rules:
+  - path_regex: .*\.env(\.encrypted)?$
+    age: age1wpmtdh7xm0xwyvqtdwm6q9fca9pprgpwr64jfnvqyw3dc7ha5szqrxegwq
