@@ -1,12 +1,307 @@
 # SKILLS.md — ONE_SHOT Skills Companion
 
-**Version:** 2.0
+**Version:** 2.1
 **Companion To:** `ONE_SHOT.md v2.1`
 **URL:** `https://raw.githubusercontent.com/Khamel83/secrets-vault/master/SKILLS.md`
 **Last Updated:** 2024-12-06
 **Purpose:** Central registry of reusable Claude Code skills for ONE_SHOT projects.
 
 This file is the **skills appendix**: everything here is *optional*, but when a task matches a skill's trigger, agents should **route to the appropriate skill** instead of reinventing workflows.
+
+---
+
+# THE BUILD ALGORITHM
+
+**The core insight: 19 modular skills can build almost ANY project.**
+
+Instead of reinventing workflows, compose skills like LEGO blocks. This section is a **mini ONE_SHOT** specifically for skill-based builds.
+
+## The Universal Build Formula
+
+```
+BUILD = Initialize → Plan → Implement → Test → Document → Deploy
+```
+
+Every project follows this pattern. The only variables are:
+- Which skills to use at each phase
+- How deep to go (micro vs heavy)
+
+## Skill Composition Matrix
+
+| Phase | Skills Used | Output |
+|-------|-------------|--------|
+| **1. Initialize** | `project-initializer`, `secrets-vault-manager` | Skeleton + secrets |
+| **2. Plan** | `feature-planner`, `api-designer` | PRD + feature plans |
+| **3. Implement** | `designer`, `database-migrator`, `docker-composer` | Working code |
+| **4. Test** | `test-runner`, `debugger`, `code-reviewer` | Passing tests |
+| **5. Document** | `documentation-generator` | README + LLM-OVERVIEW |
+| **6. Deploy** | `ci-cd-setup`, `git-workflow` | CI pipeline + PR |
+| **Ongoing** | `refactorer`, `performance-optimizer`, `dependency-manager`, `oneshot-doctor` | Maintenance |
+
+## The Algorithm: BUILD_WITH_SKILLS
+
+```yaml
+algorithm: BUILD_WITH_SKILLS
+version: "1.0"
+input: "User request (vague or detailed)"
+output: "Working project with docs and CI"
+
+steps:
+  # ─────────────────────────────────────────────────────────────
+  # STEP 0: TRIAGE (What does the user actually need?)
+  # ─────────────────────────────────────────────────────────────
+  - id: triage
+    action: "Classify user intent"
+    options:
+      build_new: "Go to step 1"
+      fix_existing: "Skip to debugger skill"
+      add_feature: "Skip to feature-planner skill"
+      understand: "Just read and explain, no skills needed"
+      quick_task: "Single skill, no orchestration"
+
+  # ─────────────────────────────────────────────────────────────
+  # STEP 1: INITIALIZE (5 min)
+  # ─────────────────────────────────────────────────────────────
+  - id: initialize
+    skills: [project-initializer, secrets-vault-manager]
+    questions:
+      - "What are we building? (one sentence)"
+      - "What problem does it solve?"
+      - "CLI, API, Web, or Script?"
+    outputs:
+      - "Directory skeleton"
+      - ".oneshot/checkpoint.yaml"
+      - ".env from secrets-vault"
+    checkpoint: "Phase 0 complete"
+
+  # ─────────────────────────────────────────────────────────────
+  # STEP 2: PLAN (10 min)
+  # ─────────────────────────────────────────────────────────────
+  - id: plan
+    skills: [feature-planner, api-designer]
+    questions:
+      - "What are the 3-5 core features?"
+      - "What does 'done' look like for v1?"
+    outputs:
+      - "PRD.md with feature breakdown"
+      - "API spec (if applicable)"
+      - "Ordered task list"
+    checkpoint: "PRD approved"
+    gate: "User must say 'PRD approved' before proceeding"
+
+  # ─────────────────────────────────────────────────────────────
+  # STEP 3: IMPLEMENT (autonomous - hours)
+  # ─────────────────────────────────────────────────────────────
+  - id: implement
+    skills: [designer, database-migrator, docker-composer]
+    mode: "autonomous"
+    loop:
+      for_each: "task in PRD.tasks"
+      do:
+        - "Implement task"
+        - "Write tests for task"
+        - "Update checkpoint"
+        - "Commit with git-workflow"
+    outputs:
+      - "Working code in src/"
+      - "Tests in tests/"
+      - "Docker setup (if needed)"
+    checkpoint: "Core implementation complete"
+
+  # ─────────────────────────────────────────────────────────────
+  # STEP 4: VALIDATE (autonomous)
+  # ─────────────────────────────────────────────────────────────
+  - id: validate
+    skills: [test-runner, debugger, code-reviewer]
+    loop:
+      - "Run test-runner"
+      - "If failures: use debugger to fix"
+      - "Run code-reviewer on changed files"
+      - "Fix any critical issues"
+      - "Repeat until all tests pass"
+    gate: "All tests must pass before proceeding"
+    checkpoint: "Tests passing"
+
+  # ─────────────────────────────────────────────────────────────
+  # STEP 5: DOCUMENT (autonomous)
+  # ─────────────────────────────────────────────────────────────
+  - id: document
+    skills: [documentation-generator]
+    outputs:
+      - "README.md updated"
+      - "LLM-OVERVIEW.md current"
+      - "ADRs for major decisions"
+    checkpoint: "Docs complete"
+
+  # ─────────────────────────────────────────────────────────────
+  # STEP 6: SHIP (autonomous)
+  # ─────────────────────────────────────────────────────────────
+  - id: ship
+    skills: [ci-cd-setup, git-workflow, oneshot-doctor]
+    outputs:
+      - ".github/workflows/ci.yml"
+      - "Clean git history"
+      - "Health check passing"
+    final_gate: "User reviews and merges PR"
+
+  # ─────────────────────────────────────────────────────────────
+  # ONGOING: MAINTAIN
+  # ─────────────────────────────────────────────────────────────
+  - id: maintain
+    trigger: "User returns with changes"
+    skills: [refactorer, performance-optimizer, dependency-manager, oneshot-doctor]
+    note: "These skills keep the project healthy over time"
+```
+
+## Quick Reference: Which Skills When?
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        SKILL SELECTION FLOWCHART                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  "I want to build something new"                                        │
+│   └─→ project-initializer → feature-planner → [implement loop]          │
+│                                                                         │
+│  "It's broken / not working"                                            │
+│   └─→ debugger → test-runner → git-workflow                             │
+│                                                                         │
+│  "Add this feature"                                                     │
+│   └─→ feature-planner → [implement] → test-runner → documentation       │
+│                                                                         │
+│  "Make it look good"                                                    │
+│   └─→ designer                                                          │
+│                                                                         │
+│  "Set up the database"                                                  │
+│   └─→ database-migrator                                                 │
+│                                                                         │
+│  "Dockerize this"                                                       │
+│   └─→ docker-composer                                                   │
+│                                                                         │
+│  "Set up CI/CD"                                                         │
+│   └─→ ci-cd-setup                                                       │
+│                                                                         │
+│  "Review this code"                                                     │
+│   └─→ code-reviewer                                                     │
+│                                                                         │
+│  "Update the docs"                                                      │
+│   └─→ documentation-generator                                           │
+│                                                                         │
+│  "Clean up / refactor"                                                  │
+│   └─→ refactorer                                                        │
+│                                                                         │
+│  "It's slow"                                                            │
+│   └─→ performance-optimizer                                             │
+│                                                                         │
+│  "Update dependencies"                                                  │
+│   └─→ dependency-manager                                                │
+│                                                                         │
+│  "Check project health"                                                 │
+│   └─→ oneshot-doctor                                                    │
+│                                                                         │
+│  "Commit / PR"                                                          │
+│   └─→ git-workflow                                                      │
+│                                                                         │
+│  "Set up secrets"                                                       │
+│   └─→ secrets-vault-manager                                             │
+│                                                                         │
+│  "Design the API"                                                       │
+│   └─→ api-designer                                                      │
+│                                                                         │
+│  "Create a new skill"                                                   │
+│   └─→ skill-creator                                                     │
+│                                                                         │
+│  "Find a skill for X"                                                   │
+│   └─→ marketplace-browser                                               │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+## Build Recipes: Common Project Types
+
+### Recipe: CLI Tool
+```yaml
+skills_sequence:
+  1. project-initializer (CLI mode)
+  2. feature-planner
+  3. [implement core logic]
+  4. test-runner
+  5. documentation-generator
+  6. git-workflow
+time: "1-4 hours"
+```
+
+### Recipe: REST API
+```yaml
+skills_sequence:
+  1. project-initializer (API mode)
+  2. api-designer
+  3. database-migrator
+  4. [implement endpoints]
+  5. test-runner
+  6. docker-composer
+  7. ci-cd-setup
+  8. documentation-generator
+time: "4-8 hours"
+```
+
+### Recipe: Static Website
+```yaml
+skills_sequence:
+  1. project-initializer (Web mode)
+  2. designer
+  3. [implement pages]
+  4. ci-cd-setup (deploy to GitHub Pages)
+  5. documentation-generator
+time: "1-2 hours"
+```
+
+### Recipe: Full-Stack Web App
+```yaml
+skills_sequence:
+  1. project-initializer (Heavy mode)
+  2. feature-planner
+  3. api-designer
+  4. database-migrator
+  5. designer (frontend)
+  6. [implement backend + frontend]
+  7. test-runner
+  8. docker-composer
+  9. ci-cd-setup
+  10. documentation-generator
+  11. secrets-vault-manager
+time: "8-24 hours"
+```
+
+### Recipe: Bug Fix
+```yaml
+skills_sequence:
+  1. debugger (find root cause)
+  2. [apply fix]
+  3. test-runner (verify fix)
+  4. code-reviewer (self-review)
+  5. git-workflow (commit + PR)
+time: "15 min - 2 hours"
+```
+
+### Recipe: Refactor Session
+```yaml
+skills_sequence:
+  1. oneshot-doctor (health check first)
+  2. test-runner (ensure coverage)
+  3. refactorer (apply patterns)
+  4. test-runner (verify no regression)
+  5. code-reviewer
+  6. documentation-generator (update if API changed)
+  7. git-workflow
+time: "1-4 hours"
+```
+
+## The Meta-Rule
+
+> **When in doubt, ask: "Which skill handles this?"**
+>
+> If none fit → you're doing something novel → document it → maybe create a new skill.
 
 ---
 
@@ -1579,10 +1874,24 @@ When you discover a pattern you repeat across projects:
 
 # END OF SKILLS.md
 
-**Version:** 2.0
+---
+
+**Version:** 2.1
 **Skills Count:** 19 skills
 **Companion To:** ONE_SHOT v2.1
 
+**NEW IN 2.1:** The Build Algorithm
+- Universal Build Formula: Initialize → Plan → Implement → Test → Document → Deploy
+- BUILD_WITH_SKILLS orchestration algorithm
+- Skill Selection Flowchart
+- 6 Build Recipes (CLI, API, Website, Full-Stack, Bug Fix, Refactor)
+
 **URL:** `https://raw.githubusercontent.com/Khamel83/secrets-vault/master/SKILLS.md`
 
-**Usage:** Fetch this file when a skill is triggered. Don't memorize—reference on demand.
+**Usage:**
+1. Start with THE BUILD ALGORITHM at the top
+2. Pick the right recipe for your project type
+3. Compose skills as LEGO blocks
+4. Reference individual skills on-demand
+
+**The insight:** 19 modular skills can build almost ANY project.
