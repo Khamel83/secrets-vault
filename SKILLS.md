@@ -1853,7 +1853,224 @@ allowed_tools: [Read, Write, Glob, Grep]
 
 ---
 
-# 21. EXTENDING SKILLS.md
+# 21. SKILL: PUSH-TO-CLOUD
+
+```yaml
+name: push-to-cloud
+intent: "Deploy a project to OCI-Dev cloud instance with full automation"
+allowed_tools: [Read, Write, Bash, Glob]
+```
+
+## 21.1 When To Use
+
+- User says: "Deploy this to cloud", "Push to OCI", "Run this externally", "Host this publicly"
+- Project needs to run 24/7 outside homelab
+- Lightweight Python/Node service needs cloud hosting
+
+## 21.2 Prerequisites
+
+- Tailscale access to oci-dev (100.126.13.70)
+- SSH key configured for ubuntu@100.126.13.70
+- Cloudflare API token (for DNS)
+- Project has requirements.txt or package.json
+
+## 21.3 Target Machine
+
+| Property | Value |
+|----------|-------|
+| **Hostname** | oci-dev (instance-first) |
+| **Tailscale IP** | 100.126.13.70 |
+| **Public IP** | 141.148.146.79 |
+| **OS** | Ubuntu 24.04 LTS (ARM64) |
+| **Free Storage** | ~77GB |
+| **Free RAM** | ~22GB |
+
+## 21.4 Deployment Workflow
+
+```yaml
+steps:
+  # Step 1: Validate project structure
+  - id: validate
+    action: "Check project has required files"
+    required:
+      - requirements.txt OR package.json
+      - Main entry point (app.py, main.py, index.js, etc.)
+    optional:
+      - .env.example (will prompt for values)
+      - Dockerfile (ignored - we use systemd)
+
+  # Step 2: Push code to oci-dev
+  - id: push
+    action: "rsync project to oci-dev"
+    command: |
+      rsync -avz --exclude='.venv' --exclude='node_modules' \
+        --exclude='__pycache__' --exclude='.git' \
+        ./ ubuntu@100.126.13.70:~/dev/${PROJECT_NAME}/
+
+  # Step 3: Setup environment
+  - id: setup
+    action: "SSH and install dependencies"
+    commands:
+      python: |
+        cd ~/dev/${PROJECT_NAME}
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+      node: |
+        cd ~/dev/${PROJECT_NAME}
+        npm install --production
+
+  # Step 4: Create systemd service
+  - id: systemd
+    action: "Create and enable systemd service"
+    template: |
+      [Unit]
+      Description=${PROJECT_NAME}
+      After=network.target
+
+      [Service]
+      Type=simple
+      User=ubuntu
+      WorkingDirectory=/home/ubuntu/dev/${PROJECT_NAME}
+      ExecStart=${EXEC_COMMAND}
+      Restart=always
+      RestartSec=5
+      Environment=PORT=${PORT}
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # Step 5: Configure DNS + Traefik (if domain requested)
+  - id: dns
+    action: "Add Cloudflare DNS record"
+    condition: "if domain requested"
+    api: |
+      curl -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records" \
+        -H "Authorization: Bearer ${CF_TOKEN}" \
+        -d '{"type":"A","name":"${SUBDOMAIN}","content":"100.112.130.100","ttl":1,"proxied":false}'
+
+  # Step 6: Add Traefik config
+  - id: traefik
+    action: "Create Traefik routing config"
+    file: ~/github/homelab/services/traefik/config/${PROJECT_NAME}.yml
+    template: |
+      http:
+        routers:
+          ${PROJECT_NAME}:
+            rule: "Host(`${SUBDOMAIN}.${DOMAIN}`)"
+            entryPoints:
+              - websecure
+            tls:
+              certResolver: cloudflare
+            service: ${PROJECT_NAME}
+        services:
+          ${PROJECT_NAME}:
+            loadBalancer:
+              servers:
+                - url: "http://100.126.13.70:${PORT}"
+
+  # Step 7: Restart Traefik
+  - id: restart
+    action: "Apply Traefik config"
+    command: docker restart traefik
+```
+
+## 21.5 Inputs Required
+
+| Input | Description | Example |
+|-------|-------------|---------|
+| `PROJECT_NAME` | Directory name on oci-dev | `my-api` |
+| `PORT` | Port the app listens on | `8080` |
+| `SUBDOMAIN` | (Optional) Subdomain for public access | `api` |
+| `DOMAIN` | (Optional) Domain | `khamel.com` |
+
+## 21.6 Outputs
+
+- Project deployed to `~/dev/${PROJECT_NAME}/` on oci-dev
+- Systemd service running and enabled
+- (Optional) DNS record created
+- (Optional) Traefik config for HTTPS routing
+
+## 21.7 Quick Deploy Script
+
+For Claude to execute in one shot:
+
+```bash
+# Variables (fill in)
+PROJECT_NAME="my-project"
+PORT="8080"
+SUBDOMAIN="myapp"  # Leave empty for no public access
+DOMAIN="khamel.com"
+
+# 1. Push code
+rsync -avz --exclude='.venv' --exclude='node_modules' --exclude='__pycache__' --exclude='.git' \
+  ./ ubuntu@100.126.13.70:~/dev/${PROJECT_NAME}/
+
+# 2. Setup on remote
+ssh ubuntu@100.126.13.70 << REMOTE
+cd ~/dev/${PROJECT_NAME}
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Create service
+sudo tee /etc/systemd/system/${PROJECT_NAME}.service << SERVICE
+[Unit]
+Description=${PROJECT_NAME}
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/dev/${PROJECT_NAME}
+ExecStart=/home/ubuntu/dev/${PROJECT_NAME}/venv/bin/python app.py
+Restart=always
+RestartSec=5
+Environment=PORT=${PORT}
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+sudo systemctl daemon-reload
+sudo systemctl enable ${PROJECT_NAME}
+sudo systemctl start ${PROJECT_NAME}
+REMOTE
+
+echo "✅ Deployed ${PROJECT_NAME} to oci-dev:${PORT}"
+```
+
+## 21.8 Anti-Patterns
+
+- Deploying without testing locally first
+- Hardcoding secrets (use environment variables)
+- Not checking if port is already in use
+- Forgetting to restart Traefik after config change
+- Deploying large apps (use homelab for heavy workloads)
+
+## 21.9 Rollback
+
+```bash
+# Stop and disable
+ssh ubuntu@100.126.13.70 "sudo systemctl stop ${PROJECT_NAME} && sudo systemctl disable ${PROJECT_NAME}"
+
+# Remove service file
+ssh ubuntu@100.126.13.70 "sudo rm /etc/systemd/system/${PROJECT_NAME}.service && sudo systemctl daemon-reload"
+
+# Remove project
+ssh ubuntu@100.126.13.70 "rm -rf ~/dev/${PROJECT_NAME}"
+
+# Remove DNS (if created)
+# curl -X DELETE "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${RECORD_ID}"
+
+# Remove Traefik config
+rm ~/github/homelab/services/traefik/config/${PROJECT_NAME}.yml
+docker restart traefik
+```
+
+---
+
+# 22. EXTENDING SKILLS.md
 
 When you discover a pattern you repeat across projects:
 
@@ -1876,8 +2093,8 @@ When you discover a pattern you repeat across projects:
 
 ---
 
-**Version:** 2.1
-**Skills Count:** 19 skills
+**Version:** 2.2
+**Skills Count:** 20 skills
 **Companion To:** ONE_SHOT v2.1
 
 **NEW IN 2.1:** The Build Algorithm
