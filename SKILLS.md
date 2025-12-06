@@ -1,7 +1,7 @@
 # SKILLS.md — ONE_SHOT Skills Companion
 
-**Version:** 2.1
-**Companion To:** `ONE_SHOT.md v2.1`
+**Version:** 2.3
+**Companion To:** `ONE_SHOT.md v3.1`
 **URL:** `https://raw.githubusercontent.com/Khamel83/secrets-vault/master/SKILLS.md`
 **Last Updated:** 2024-12-06
 **Purpose:** Central registry of reusable Claude Code skills for ONE_SHOT projects.
@@ -12,7 +12,7 @@ This file is the **skills appendix**: everything here is *optional*, but when a 
 
 # THE BUILD ALGORITHM
 
-**The core insight: 19 modular skills can build almost ANY project.**
+**The core insight: 21 modular skills can build almost ANY project.**
 
 Instead of reinventing workflows, compose skills like LEGO blocks. This section is a **mini ONE_SHOT** specifically for skill-based builds.
 
@@ -214,6 +214,9 @@ steps:
 │  "Find a skill for X"                                                   │
 │   └─→ marketplace-browser                                               │
 │                                                                         │
+│  "Deploy to cloud" / "Host this publicly"                               │
+│   └─→ push-to-cloud                                                     │
+│                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -397,6 +400,7 @@ All skills in this file follow these rules:
 | 18 | **docker-composer** | Docker & compose setup | "dockerize", "container", "compose" |
 | 19 | **ci-cd-setup** | GitHub Actions / CI pipelines | "CI", "GitHub Actions", "pipeline", "deploy" |
 | 20 | **refactorer** | Code refactoring patterns | "refactor", "clean up", "extract", "rename" |
+| 21 | **push-to-cloud** | Deploy to OCI-Dev cloud | "deploy", "push to cloud", "host this" |
 
 ---
 
@@ -2115,7 +2119,7 @@ steps:
     command: docker restart traefik
 ```
 
-## 21.5 Inputs Required
+## 21.6 Inputs Required
 
 | Input | Description | Example |
 |-------|-------------|---------|
@@ -2124,14 +2128,14 @@ steps:
 | `SUBDOMAIN` | (Optional) Subdomain for public access | `api` |
 | `DOMAIN` | (Optional) Domain | `khamel.com` |
 
-## 21.6 Outputs
+## 21.7 Outputs
 
 - Project deployed to `~/dev/${PROJECT_NAME}/` on oci-dev
 - Systemd service running and enabled
 - (Optional) DNS record created
 - (Optional) Traefik config for HTTPS routing
 
-## 21.7 Quick Deploy Script
+## 21.8 Quick Deploy Script
 
 For Claude to execute in one shot:
 
@@ -2228,7 +2232,7 @@ REMOTE
 echo "✅ Deployed ${PROJECT_NAME} to oci-dev:${PORT}"
 ```
 
-## 21.8 Anti-Patterns
+## 21.9 Anti-Patterns
 
 - Deploying without testing locally first
 - Hardcoding secrets (use environment variables)
@@ -2236,7 +2240,7 @@ echo "✅ Deployed ${PROJECT_NAME} to oci-dev:${PORT}"
 - Forgetting to restart Traefik after config change
 - Deploying large apps (use homelab for heavy workloads)
 
-## 21.9 Rollback
+## 21.10 Rollback
 
 ```bash
 # Stop and disable
@@ -2283,13 +2287,11 @@ When you discover a pattern you repeat across projects:
 
 **Version:** 2.3
 **Skills Count:** 21 skills
-**Companion To:** ONE_SHOT v2.1
+**Companion To:** ONE_SHOT v3.1
 
-**NEW IN 2.1:** The Build Algorithm
-- Universal Build Formula: Initialize → Plan → Implement → Test → Document → Deploy
-- BUILD_WITH_SKILLS orchestration algorithm
-- Skill Selection Flowchart
-- 6 Build Recipes (CLI, API, Website, Full-Stack, Bug Fix, Refactor)
+**Changelog:**
+- **v2.3**: Added push-to-cloud skill (#21) for OCI-Dev deployment with infrastructure validation
+- **v2.1**: Added The Build Algorithm, BUILD_WITH_SKILLS orchestration, Skill Selection Flowchart, 6 Build Recipes
 
 **URL:** `https://raw.githubusercontent.com/Khamel83/secrets-vault/master/SKILLS.md`
 
@@ -2299,4 +2301,4 @@ When you discover a pattern you repeat across projects:
 3. Compose skills as LEGO blocks
 4. Reference individual skills on-demand
 
-**The insight:** 19 modular skills can build almost ANY project.
+**The insight:** 21 modular skills can build almost ANY project.
