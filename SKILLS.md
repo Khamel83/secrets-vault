@@ -1885,10 +1885,150 @@ allowed_tools: [Read, Write, Bash, Glob]
 | **Free Storage** | ~77GB |
 | **Free RAM** | ~22GB |
 
-## 21.4 Deployment Workflow
+### OCI Always Free Tier Limits
+
+This is an Oracle Cloud Always Free ARM instance. These limits are FIXED and cannot be exceeded:
+
+| Resource | Hard Limit | Notes |
+|----------|-----------|-------|
+| **vCPUs** | 4 OCPU (ARM) | Shared across all Always Free ARM instances |
+| **RAM** | 24 GB | Fixed allocation |
+| **Storage** | 200 GB boot volume | This instance uses ~50GB |
+| **Outbound Data** | 10 TB/month | Generous for most apps |
+| **Public IPs** | 2 reserved | 1 in use |
+
+### What CAN Be Deployed
+
+- Lightweight Python APIs (FastAPI, Flask)
+- Static sites / simple web apps
+- Background workers / cron jobs
+- Webhook receivers
+- Chat bots (Telegram, Discord)
+- Small databases (SQLite, Redis)
+- Proxy services
+
+### What Should NOT Be Deployed
+
+- Heavy ML models (use homelab GPU instead)
+- Large databases (PostgreSQL with big datasets)
+- High-traffic production apps
+- Anything requiring >4GB RAM per process
+- Docker-heavy stacks (use homelab instead)
+
+### Resource Check Before Deploy
+
+```bash
+# Check current resource usage on oci-dev
+ssh ubuntu@100.126.13.70 << 'RESOURCES'
+echo "=== Current Resource Usage ==="
+echo ""
+echo "CPU (4 OCPU max):"
+top -bn1 | head -3
+
+echo ""
+echo "Memory (24GB max):"
+free -h
+
+echo ""
+echo "Disk (200GB max):"
+df -h /
+
+echo ""
+echo "Running services:"
+systemctl list-units --type=service --state=running | grep -v systemd | head -20
+RESOURCES
+```
+
+## 21.4 Infrastructure Prerequisites
+
+Before deploying, verify oci-dev has required tooling installed. Run this check first:
+
+```bash
+# Infrastructure check script - run on oci-dev
+ssh ubuntu@100.126.13.70 << 'CHECK'
+echo "=== OCI-Dev Infrastructure Check ==="
+
+# Python environment
+echo -n "Python 3: "
+python3 --version 2>/dev/null || echo "❌ MISSING"
+
+echo -n "pip: "
+pip3 --version 2>/dev/null || echo "❌ MISSING"
+
+echo -n "venv: "
+python3 -c "import venv" 2>/dev/null && echo "✅ OK" || echo "❌ MISSING"
+
+# Node environment (optional)
+echo -n "Node.js: "
+node --version 2>/dev/null || echo "⚠️ Not installed (optional)"
+
+echo -n "npm: "
+npm --version 2>/dev/null || echo "⚠️ Not installed (optional)"
+
+# System tools
+echo -n "systemd: "
+systemctl --version | head -1 2>/dev/null || echo "❌ MISSING"
+
+echo -n "curl: "
+curl --version | head -1 2>/dev/null || echo "❌ MISSING"
+
+# Directory structure
+echo -n "~/dev directory: "
+[ -d ~/dev ] && echo "✅ Exists" || echo "⚠️ Will create"
+
+# Disk space
+echo -n "Free disk: "
+df -h / | awk 'NR==2 {print $4 " available"}'
+
+# Memory
+echo -n "Free RAM: "
+free -h | awk '/Mem:/ {print $4 " available"}'
+CHECK
+```
+
+### Auto-Fix Missing Prerequisites
+
+If any prerequisites are missing, run this setup:
+
+```bash
+ssh ubuntu@100.126.13.70 << 'SETUP'
+echo "=== Installing OCI-Dev Prerequisites ==="
+
+# Update package lists
+sudo apt-get update
+
+# Python essentials
+sudo apt-get install -y python3 python3-pip python3-venv
+
+# Node.js (via NodeSource for LTS)
+if ! command -v node &> /dev/null; then
+  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+  sudo apt-get install -y nodejs
+fi
+
+# Essential tools
+sudo apt-get install -y curl wget git htop
+
+# Create dev directory
+mkdir -p ~/dev
+
+echo "✅ Prerequisites installed"
+SETUP
+```
+
+## 21.5 Deployment Workflow
 
 ```yaml
 steps:
+  # Step 0: Check/Install prerequisites
+  - id: prereq
+    action: "Verify oci-dev has required tools"
+    checks:
+      - python3 --version
+      - pip3 --version
+      - systemctl --version
+    on_fail: "Run auto-fix script above"
+
   # Step 1: Validate project structure
   - id: validate
     action: "Check project has required files"
@@ -2001,20 +2141,58 @@ PROJECT_NAME="my-project"
 PORT="8080"
 SUBDOMAIN="myapp"  # Leave empty for no public access
 DOMAIN="khamel.com"
+ENTRY_POINT="app.py"  # main.py, server.py, etc.
 
-# 1. Push code
+# 0. Pre-flight checks
+echo "🔍 Running pre-flight checks..."
+ssh ubuntu@100.126.13.70 << 'PREFLIGHT'
+# Check Python
+if ! command -v python3 &> /dev/null; then
+  echo "❌ Python3 not found. Installing..."
+  sudo apt-get update && sudo apt-get install -y python3 python3-pip python3-venv
+fi
+
+# Check pip
+if ! command -v pip3 &> /dev/null; then
+  echo "❌ pip3 not found. Installing..."
+  sudo apt-get install -y python3-pip
+fi
+
+# Ensure dev directory exists
+mkdir -p ~/dev
+
+echo "✅ Prerequisites OK"
+PREFLIGHT
+
+# 1. Check port availability
+echo "🔍 Checking port ${PORT}..."
+PORT_CHECK=$(ssh ubuntu@100.126.13.70 "ss -tlnp | grep :${PORT} || true")
+if [ -n "$PORT_CHECK" ]; then
+  echo "⚠️  Port ${PORT} is in use:"
+  echo "$PORT_CHECK"
+  echo "Choose a different port or stop the conflicting service."
+  exit 1
+fi
+echo "✅ Port ${PORT} available"
+
+# 2. Push code
+echo "📦 Pushing code to oci-dev..."
 rsync -avz --exclude='.venv' --exclude='node_modules' --exclude='__pycache__' --exclude='.git' \
   ./ ubuntu@100.126.13.70:~/dev/${PROJECT_NAME}/
 
-# 2. Setup on remote
+# 3. Setup on remote
+echo "🔧 Setting up environment..."
 ssh ubuntu@100.126.13.70 << REMOTE
 cd ~/dev/${PROJECT_NAME}
+
+# Create/update venv
 python3 -m venv venv
 source venv/bin/activate
+pip install --upgrade pip
 pip install -r requirements.txt
 
 # Create service
-sudo tee /etc/systemd/system/${PROJECT_NAME}.service << SERVICE
+sudo tee /etc/systemd/system/${PROJECT_NAME}.service > /dev/null << SERVICE
 [Unit]
 Description=${PROJECT_NAME}
 After=network.target
@@ -2023,7 +2201,7 @@ After=network.target
 Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/dev/${PROJECT_NAME}
-ExecStart=/home/ubuntu/dev/${PROJECT_NAME}/venv/bin/python app.py
+ExecStart=/home/ubuntu/dev/${PROJECT_NAME}/venv/bin/python ${ENTRY_POINT}
 Restart=always
 RestartSec=5
 Environment=PORT=${PORT}
@@ -2034,7 +2212,17 @@ SERVICE
 
 sudo systemctl daemon-reload
 sudo systemctl enable ${PROJECT_NAME}
-sudo systemctl start ${PROJECT_NAME}
+sudo systemctl restart ${PROJECT_NAME}
+
+# Verify it started
+sleep 2
+if systemctl is-active --quiet ${PROJECT_NAME}; then
+  echo "✅ Service started successfully"
+else
+  echo "❌ Service failed to start. Checking logs..."
+  sudo journalctl -u ${PROJECT_NAME} -n 20 --no-pager
+  exit 1
+fi
 REMOTE
 
 echo "✅ Deployed ${PROJECT_NAME} to oci-dev:${PORT}"
@@ -2093,8 +2281,8 @@ When you discover a pattern you repeat across projects:
 
 ---
 
-**Version:** 2.2
-**Skills Count:** 20 skills
+**Version:** 2.3
+**Skills Count:** 21 skills
 **Companion To:** ONE_SHOT v2.1
 
 **NEW IN 2.1:** The Build Algorithm
