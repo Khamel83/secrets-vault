@@ -1,9 +1,26 @@
 # SKILLS.md — ONE_SHOT Skills Companion
 
-**Version:** 2.3
+> ⚠️ **DEPRECATED**: This monolithic file has been replaced by native Claude Code skills.
+>
+> **New Location**: `~/.claude/skills/` (symlinked from `secrets-vault/.claude/skills/`)
+>
+> **Migration**:
+> ```bash
+> # Install native skills (one-time)
+> ln -s ~/github/secrets-vault/.claude/skills ~/.claude/skills/oneshot
+> ```
+>
+> Native skills provide ~90% token reduction through progressive disclosure.
+> Claude Code loads ~100 tokens per skill at startup vs ~30k for this file.
+>
+> This file remains for reference and non-Claude-Code agents.
+
+---
+
+**Version:** 2.3 (DEPRECATED)
 **Companion To:** `ONE_SHOT.md v3.1`
 **URL:** `https://raw.githubusercontent.com/Khamel83/secrets-vault/master/SKILLS.md`
-**Last Updated:** 2024-12-06
+**Last Updated:** 2024-12-09
 **Purpose:** Central registry of reusable Claude Code skills for ONE_SHOT projects.
 
 This file is the **skills appendix**: everything here is *optional*, but when a task matches a skill's trigger, agents should **route to the appropriate skill** instead of reinventing workflows.

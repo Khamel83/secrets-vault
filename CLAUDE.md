@@ -147,4 +147,37 @@ Then:
 
 ---
 
+## ONE_SHOT Skills System
+
+**Skills are installed at**: `~/.claude/skills/oneshot/` (symlinked from `secrets-vault/.claude/skills/`)
+
+### How It Works
+
+1. **AGENTS.md** (skeleton key) - Curled into projects, provides orchestration
+2. **Skills** (21 total) - Loaded on-demand via progressive disclosure (~100 tokens each)
+3. **secrets-vault** - Source of truth for skills and encrypted secrets
+
+### Skill Discovery
+
+When a user's intent matches a skill trigger, use that skill instead of reinventing workflows:
+
+| Intent | Skill |
+|--------|-------|
+| "new project", "build me" | `oneshot-core` |
+| "resume", "checkpoint" | `oneshot-resume` |
+| "deploy", "push to cloud" | `push-to-cloud` |
+| "refactor", "clean up" | `refactorer` |
+| "bug", "broken" | `debugger` |
+
+Full skill list: See AGENTS.md `AVAILABLE SKILLS` section.
+
+### Skills Location
+
+```
+~/.claude/skills/oneshot/       <- Symlink to secrets-vault/.claude/skills
+~/github/secrets-vault/         <- Source repo (contains skills + encrypted secrets)
+```
+
+---
+
 **Remember:** Your training data is a starting point, not the source of truth. Current documentation is truth.
