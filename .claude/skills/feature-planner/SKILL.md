@@ -108,6 +108,26 @@ Always follow this implementation order:
 6. Write tests
 7. Update docs
 
+## Thinking Depth
+
+Use extended thinking for architecture decisions:
+
+**Ultrathink triggers** (when to think deeply):
+- Multiple valid approaches exist
+- Cross-cutting concerns (auth, caching, data modeling)
+- Breaking changes or migrations
+- User says "think hard", "really think about this", "ultrathink"
+- Risk table shows High impact items
+
+**Standard thinking (default):**
+- Clear requirements with single approach
+- Following established patterns
+- Low-risk changes
+
+**Perspective Simulation:**
+When facing trade-offs, simulate:
+> "A security engineer, a DX advocate, and a performance engineer review this plan. What would each flag?"
+
 ## Anti-Patterns
 
 - Turning planning into implementation (plan first, then implement)
@@ -117,4 +137,4 @@ Always follow this implementation order:
 
 ## Keywords
 
-plan feature, break down, create plan, implement, design, architect, tasks
+plan feature, break down, create plan, implement, design, architect, tasks, ultrathink, think hard

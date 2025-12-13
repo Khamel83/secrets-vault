@@ -124,6 +124,16 @@ Generate handoff when:
 - Agent is looping or stuck
 - Before any session end
 
+## Handoff Thinking Depth
+
+When generating HANDOFF STATE, ultrathink through:
+1. "What context would future-me need to resume without re-reading all code?"
+2. "What decisions were made that aren't obvious from the code?"
+3. "What dead ends were tried that shouldn't be repeated?"
+4. "What's the simplest possible next action?"
+
+The handoff is only as good as the context it preserves.
+
 ## Receiving a Handoff
 
 **Agent MUST**:
@@ -160,4 +170,4 @@ recovery:
 
 ## Keywords
 
-resume, continue, checkpoint, pick up, status, handoff, where were we, session
+resume, continue, checkpoint, pick up, status, handoff, where were we, session, ultrathink, think hard

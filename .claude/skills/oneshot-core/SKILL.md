@@ -40,6 +40,16 @@ Intent: [type] | Scope: [micro/small/medium/large] | Flow: [Full/Mini/Direct/Res
 Next: [specific next step]
 ```
 
+## Thinking Depth by Phase
+
+| Phase | Default | Ultrathink When |
+|-------|---------|-----------------|
+| Triage | Standard | Unclear intent, mixed signals |
+| Questions | Standard | User gives conflicting answers |
+| PRD Generation | Ultrathink | Always - architecture matters |
+| Build Loop | Standard | Hard stop triggers |
+| Handoff | Ultrathink | Always - context preservation |
+
 ## Mode Selection (Q0)
 
 | Mode | Trigger | Questions | Output |
