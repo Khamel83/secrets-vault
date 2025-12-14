@@ -149,13 +149,13 @@ Then:
 
 ## ONE_SHOT Skills System
 
-**Skills are installed at**: `~/.claude/skills/oneshot/` (symlinked from `secrets-vault/.claude/skills/`)
+**Everything lives in**: `~/github/oneshot/`
 
 ### How It Works
 
-1. **AGENTS.md** (skeleton key) - Curled into projects, provides orchestration
-2. **Skills** (21 total) - Loaded on-demand via progressive disclosure (~100 tokens each)
-3. **secrets-vault** - Source of truth for skills and encrypted secrets
+1. **AGENTS.md** - Skill router (curled into projects)
+2. **Skills** (20 total) - In `.claude/skills/`, symlinked to `~/.claude/skills/oneshot/`
+3. **Secrets** - SOPS-encrypted in `secrets/`
 
 ### Skill Discovery
 
@@ -164,18 +164,33 @@ When a user's intent matches a skill trigger, use that skill instead of reinvent
 | Intent | Skill |
 |--------|-------|
 | "new project", "build me" | `oneshot-core` |
-| "resume", "checkpoint" | `oneshot-resume` |
+| "resume", "handoff" | `resume-handoff` |
 | "deploy", "push to cloud" | `push-to-cloud` |
 | "refactor", "clean up" | `refactorer` |
 | "bug", "broken" | `debugger` |
 
 Full skill list: See AGENTS.md `AVAILABLE SKILLS` section.
 
-### Skills Location
+### Locations
 
 ```
-~/.claude/skills/oneshot/       <- Symlink to secrets-vault/.claude/skills
-~/github/secrets-vault/         <- Source repo (contains skills + encrypted secrets)
+~/github/oneshot/               <- Source of truth for EVERYTHING
+├── .claude/skills/             <- 20 skills
+├── secrets/                    <- SOPS-encrypted secrets
+├── AGENTS.md                   <- Skill router
+└── oneshot.sh                  <- Bootstrap script
+
+~/.claude/skills/oneshot/       <- Symlink to ~/github/oneshot/.claude/skills
+```
+
+### Secrets
+
+```bash
+# Decrypt
+sops -d ~/github/oneshot/secrets/homelab.env.encrypted > .env
+
+# Edit in-place
+sops ~/github/oneshot/secrets/homelab.env.encrypted
 ```
 
 ---
